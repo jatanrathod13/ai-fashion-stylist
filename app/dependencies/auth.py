@@ -11,19 +11,20 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import jwt, JWTError
 from passlib.context import CryptContext
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 
 from app.config import settings
 from app.database import get_db
 from app.models.user import User
-from app.schemas.user import TokenData
+from app.schemas.token import TokenData
 
 
 # Password hashing
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # OAuth2 configuration
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/users/token")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/token")
 
 # JWT configuration
 SECRET_KEY = settings.SECRET_KEY
@@ -41,9 +42,12 @@ def get_password_hash(password: str) -> str:
     return pwd_context.hash(password)
 
 
-def authenticate_user(db: Session, username: str, password: str) -> Optional[User]:
+async def authenticate_user(db: AsyncSession, username: str, password: str) -> Optional[User]:
     """Authenticate a user with username and password"""
-    user = db.query(User).filter(User.username == username).first()
+    query = select(User).where(User.username == username)
+    result = await db.execute(query)
+    user = result.scalar_one_or_none()
+    
     if not user:
         return None
     if not verify_password(password, user.hashed_password):
@@ -71,7 +75,7 @@ def create_access_token(
 
 async def get_current_user(
     token: str = Depends(oauth2_scheme),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ) -> User:
     """Get the current authenticated user from the token"""
     credentials_exception = HTTPException(
@@ -94,7 +98,10 @@ async def get_current_user(
         raise credentials_exception
     
     # Get user from database
-    user = db.query(User).filter(User.username == token_data.username).first()
+    query = select(User).where(User.username == token_data.username)
+    result = await db.execute(query)
+    user = result.scalar_one_or_none()
+    
     if user is None:
         raise credentials_exception
     

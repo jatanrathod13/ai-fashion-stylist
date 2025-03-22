@@ -16,8 +16,11 @@ from app.schemas.user import (
     UserCreate, 
     UserUpdate, 
     User, 
-    UserLogin, 
-    Token, 
+    UserLogin,
+    UserResponse
+)
+from app.schemas.token import (
+    Token,
     TokenData
 )
 from app.schemas.style_profile import (
@@ -65,7 +68,10 @@ __all__ = [
     "BaseSchema", "IDMixin", "TimestampMixin", "PaginatedResponse", "ResponseModel", "ErrorResponse",
     
     # User
-    "UserBase", "UserCreate", "UserUpdate", "User", "UserLogin", "Token", "TokenData",
+    "UserBase", "UserCreate", "UserUpdate", "User", "UserLogin", "UserResponse",
+    
+    # Token
+    "Token", "TokenData",
     
     # Style Profile
     "StyleProfileBase", "StyleProfileCreate", "StyleProfileUpdate", "StyleProfile",

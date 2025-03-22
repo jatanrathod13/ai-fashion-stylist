@@ -9,6 +9,32 @@ from pydantic import Field, field_validator
 from app.schemas.base import BaseSchema, IDMixin, TimestampMixin
 
 
+# Budget range schema
+class BudgetRange(BaseSchema):
+    """Schema for budget range specification"""
+    
+    min: float = Field(..., ge=0, description="Minimum budget amount")
+    max: float = Field(..., gt=0, description="Maximum budget amount")
+    
+    @field_validator('max')
+    def validate_range(cls, v, values):
+        """Validate that max is greater than min"""
+        if 'min' in values and v <= values['min']:
+            raise ValueError('Maximum budget must be greater than minimum budget')
+        return v
+
+
+# Style preferences schema
+class StylePreferences(BaseSchema):
+    """Schema for style preferences specification"""
+    
+    favorite_colors: Optional[List[str]] = None
+    favorite_brands: Optional[List[str]] = None
+    preferred_styles: Optional[List[str]] = None
+    disliked_items: Optional[List[str]] = None
+    special_requirements: Optional[str] = None
+
+
 # Product schema
 class ProductBase(BaseSchema):
     """Base schema for Product with common fields"""
@@ -112,6 +138,13 @@ class Recommendation(RecommendationBase, IDMixin, TimestampMixin):
     
     user_id: int
     outfits: List[Outfit] = []
+
+
+# API response schema for Recommendation
+class RecommendationResponse(Recommendation):
+    """API response schema for recommendations"""
+    
+    pass
 
 
 # Request schemas

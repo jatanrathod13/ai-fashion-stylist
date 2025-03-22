@@ -55,6 +55,13 @@ class StyleProfile(StyleProfileBase, IDMixin, TimestampMixin):
     user_id: int
 
 
+# Schema for style profile response (used in API responses)
+class StyleProfileResponse(StyleProfile):
+    """Schema for style profile API responses"""
+    
+    pass
+
+
 # Base FeedbackHistory schema with common attributes
 class FeedbackHistoryBase(BaseSchema):
     """Base schema for FeedbackHistory with common fields"""

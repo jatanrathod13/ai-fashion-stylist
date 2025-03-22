@@ -118,7 +118,7 @@ class Product(Base, BaseModel):
     retailer = Column(String, nullable=True)
     
     # Product metadata
-    metadata = Column(JSON, nullable=True)  # Additional product details
+    product_metadata = Column(JSON, nullable=True)  # Additional product details
     
     def __repr__(self):
         """String representation of the product"""

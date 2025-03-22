@@ -5,8 +5,10 @@ This module manages environment variables and provides configuration settings
 for various components of the application.
 """
 import os
-from pydantic import BaseSettings
+from pydantic_settings import BaseSettings
+from typing import List
 from dotenv import load_dotenv
+import json
 
 # Load environment variables from .env file
 load_dotenv()
@@ -36,7 +38,7 @@ class Settings(BaseSettings):
     # File storage
     STORAGE_TYPE: str = os.getenv("STORAGE_TYPE", "local")  # local, s3, etc.
     UPLOAD_DIR: str = os.getenv("UPLOAD_DIR", "./uploads")
-    MAX_UPLOAD_SIZE: int = int(os.getenv("MAX_UPLOAD_SIZE", "10485760"))  # 10MB
+    MAX_UPLOAD_SIZE: int = int(os.getenv("MAX_UPLOAD_SIZE", "10485760"))
     
     # Firecrawl settings (for e-commerce crawling)
     FIRECRAWL_API_KEY: str = os.getenv("FIRECRAWL_API_KEY", "")
@@ -45,12 +47,18 @@ class Settings(BaseSettings):
     PERPLEXITY_API_KEY: str = os.getenv("PERPLEXITY_API_KEY", "")
     
     # Database settings
-    DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./fashion_stylist.db")
+    DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./fashion_stylist.db")
     
-    class Config:
-        """Pydantic config"""
-        case_sensitive = True
-        env_file = ".env"
+    # CORS Settings
+    CORS_ORIGINS: List[str] = json.loads(os.getenv("CORS_ORIGINS", '["http://localhost:3000", "http://localhost:8000"]'))
+    
+    # Logging
+    LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
+    
+    model_config = {
+        "case_sensitive": True,
+        "env_file": ".env",
+    }
 
 
 # Create settings instance

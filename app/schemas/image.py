@@ -38,6 +38,13 @@ class ClothingItem(ClothingItemBase, IDMixin, TimestampMixin):
     image_id: int
 
 
+# API response schema for ClothingItem
+class ClothingItemResponse(ClothingItem):
+    """API response schema for clothing items"""
+    
+    pass
+
+
 # Image schema
 class ImageBase(BaseSchema):
     """Base schema for Image with common fields"""
@@ -73,6 +80,13 @@ class Image(ImageBase, IDMixin, TimestampMixin):
     
     user_id: int
     style_profile_id: Optional[int] = None
+
+
+# API response schema for Image
+class ImageResponse(Image):
+    """API response schema for images"""
+    
+    pass
 
 
 # Upload response

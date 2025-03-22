@@ -58,6 +58,12 @@ class User(UserBase, IDMixin, TimestampMixin):
     is_verified: bool
 
 
+# Schema for user response in API
+class UserResponse(User):
+    """Schema for user response in API endpoints"""
+    pass
+
+
 # Schema for token response
 class Token(BaseSchema):
     """Schema for authentication token response"""
