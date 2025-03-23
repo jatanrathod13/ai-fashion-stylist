@@ -4,7 +4,7 @@ Recommendation schemas
 This module provides Pydantic models for Recommendation-related request and response validation.
 """
 from typing import Optional, List, Dict, Any
-from pydantic import Field, field_validator, validator, BaseModel, ValidationInfo
+from pydantic import Field, field_validator
 
 from app.schemas.base import BaseSchema, IDMixin, TimestampMixin
 
@@ -13,8 +13,8 @@ from app.schemas.base import BaseSchema, IDMixin, TimestampMixin
 class BudgetRange(BaseSchema):
     """Schema for budget range specification"""
     
-    min: float = Field(0.0, ge=0, description="Minimum budget amount")
-    max: float = Field(1000.0, gt=0, description="Maximum budget amount")
+    min: float = Field(..., ge=0, description="Minimum budget amount")
+    max: float = Field(..., gt=0, description="Maximum budget amount")
     
     @field_validator('max')
     @classmethod
@@ -23,19 +23,6 @@ class BudgetRange(BaseSchema):
         if 'min' in info.data and v <= info.data['min']:
             raise ValueError('Maximum budget must be greater than minimum budget')
         return v
-    
-    @classmethod
-    def from_string(cls, budget_string: str) -> "BudgetRange":
-        """Create a BudgetRange from a string like '100-400'."""
-        try:
-            parts = budget_string.split("-")
-            if len(parts) == 2:
-                return cls(min=float(parts[0]), max=float(parts[1]))
-        except (ValueError, IndexError):
-            pass
-        
-        # Default range if parsing fails
-        return cls()
 
 
 # Style preferences schema
@@ -120,18 +107,6 @@ class Outfit(OutfitBase, IDMixin, TimestampMixin):
     components: List[OutfitComponent] = []
 
 
-# Item schema from improved version
-class RecommendationItem(BaseModel):
-    """An individual item in a recommendation outfit."""
-    name: str
-    category: str
-    description: Optional[str] = None
-    color: Optional[str] = None
-    brand: Optional[str] = None
-    price_range: Optional[str] = None
-    alternatives: Optional[List[str]] = None
-
-
 # Recommendation schema
 class RecommendationBase(BaseSchema):
     """Base schema for Recommendation with common fields"""
@@ -143,26 +118,18 @@ class RecommendationBase(BaseSchema):
     budget_max: Optional[float] = None
     status: str = "pending"
     fashion_trends: Optional[List[Dict[str, Any]]] = None
-    items: Optional[List[Dict[str, Any]]] = None
-    description: Optional[str] = None
-    styling_tips: Optional[List[str]] = None
-    reasoning: Optional[str] = None
-    is_favorite: bool = False
 
 
 class RecommendationCreate(RecommendationBase):
     """Schema for creating a new recommendation"""
     
     outfits: Optional[List[OutfitCreate]] = None
-    user_id: Optional[int] = None
-    profile_id: Optional[int] = None
     
     @field_validator('budget_max')
-    def validate_budget_range(cls, v: float, info: ValidationInfo) -> float:
+    def validate_budget_range(cls, v, values):
         """Validate that budget_max is greater than budget_min"""
-        budget_min = info.data.get('budget_min')
-        if budget_min is not None and v is not None:
-            if v <= budget_min:
+        if 'budget_min' in values and v is not None and values['budget_min'] is not None:
+            if v <= values['budget_min']:
                 raise ValueError('Maximum budget must be greater than minimum budget')
         return v
 
@@ -178,47 +145,20 @@ class Recommendation(RecommendationBase, IDMixin, TimestampMixin):
 class RecommendationResponse(Recommendation):
     """API response schema for recommendations"""
     
-    class Config:
-        from_attributes = True  # Updated from orm_mode
+    pass
 
 
 # Request schemas
 class RecommendationRequest(BaseSchema):
     """Schema for requesting style recommendations"""
     
-    title: str = Field("My Outfit Recommendation", description="Title for this recommendation request")
-    occasion: Optional[str] = Field(None, description="Occasion for the outfit (casual, formal, work, etc.)")
+    title: str = Field(..., description="Title for this recommendation request")
+    occasion: str = Field(..., description="Occasion for the outfit (casual, formal, work, etc.)")
     season: Optional[str] = Field(None, description="Season (spring, summer, fall, winter)")
-    budget_min: float = Field(0.0, ge=0, description="Minimum budget")
-    budget_max: Optional[float] = Field(1000.0, gt=0, description="Maximum budget")
-    style_profile_id: Optional[int] = Field(None, description="Style profile ID to use for recommendations")
+    budget_min: float = Field(..., ge=0, description="Minimum budget")
+    budget_max: float = Field(..., gt=0, description="Maximum budget")
+    style_profile_id: int = Field(..., description="Style profile ID to use for recommendations")
     specific_requests: Optional[str] = Field(None, description="Additional specific requests or preferences")
-    
-    @field_validator('budget_max')
-    def validate_budget_range(cls, v: float, info: ValidationInfo) -> float:
-        """Validate that budget_max is greater than budget_min"""
-        budget_min = info.data.get('budget_min')
-        if budget_min is not None and v is not None:
-            if v <= budget_min:
-                raise ValueError('Maximum budget must be greater than minimum budget')
-        return v
-    
-    @classmethod
-    def from_form_data(cls, form_data: Dict[str, Any]) -> "RecommendationRequest":
-        """Create a RecommendationRequest from form data with budget range handling."""
-        # Handle budget range if provided as a single string
-        if "budget" in form_data and isinstance(form_data["budget"], str):
-            try:
-                parts = form_data["budget"].split("-")
-                if len(parts) == 2:
-                    form_data["budget_min"] = float(parts[0])
-                    form_data["budget_max"] = float(parts[1])
-                    form_data.pop("budget")
-            except (ValueError, IndexError):
-                pass
-        
-        # Create the request object
-        return cls(**form_data)
 
 
 # Long-running task schemas

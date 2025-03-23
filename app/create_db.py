@@ -1,40 +1,40 @@
 """
 Database initialization script.
 
-This script creates all tables defined in SQLAlchemy models.
+This script sets up the database by executing Alembic migrations.
 Run this script before starting the application for the first time.
 """
 
 import asyncio
+import subprocess
+import os
 from sqlalchemy import text
 
 from app.database import engine
-from app.models.user import Base as UserBase
-from app.models.style_profile import Base as StyleProfileBase
-from app.models.recommendation import Base as RecommendationBase
-from app.models.image import Base as ImageBase
+from app.models.base import Base
 
 async def init_db():
-    """Initialize the database by creating all tables."""
-    print("Creating database tables...")
+    """Initialize the database by running Alembic migrations."""
+    print("Initializing database...")
     
-    # Create tables for all models
+    # Test database connection
     async with engine.begin() as conn:
-        # Drop all tables if they exist (comment out in production)
-        # await conn.run_sync(lambda sync_conn: UserBase.metadata.drop_all(sync_conn))
-        # await conn.run_sync(lambda sync_conn: StyleProfileBase.metadata.drop_all(sync_conn))
-        # await conn.run_sync(lambda sync_conn: RecommendationBase.metadata.drop_all(sync_conn))
-        # await conn.run_sync(lambda sync_conn: ImageBase.metadata.drop_all(sync_conn))
-        
-        # Create all tables
-        await conn.run_sync(lambda sync_conn: UserBase.metadata.create_all(sync_conn))
-        await conn.run_sync(lambda sync_conn: StyleProfileBase.metadata.create_all(sync_conn))
-        await conn.run_sync(lambda sync_conn: RecommendationBase.metadata.create_all(sync_conn))
-        await conn.run_sync(lambda sync_conn: ImageBase.metadata.create_all(sync_conn))
-        
-        # Test database connection
-        result = await conn.execute(text("SELECT 1"))
-        print(f"Database connection test: {result.scalar() == 1}")
+        try:
+            result = await conn.execute(text("SELECT 1"))
+            print(f"Database connection test: {result.scalar() == 1}")
+        except Exception as e:
+            print(f"Database connection error: {e}")
+            return
+    
+    # Run Alembic migrations
+    try:
+        print("Running database migrations...")
+        # Use the upgrade command to apply all migrations
+        subprocess.run(["alembic", "upgrade", "head"], check=True)
+        print("Database migrations completed successfully!")
+    except subprocess.CalledProcessError as e:
+        print(f"Error running migrations: {e}")
+        return
     
     print("Database initialization completed!")
 

@@ -5,6 +5,7 @@ This module provides functionality for managing style profiles and generating
 style embeddings for similarity search.
 """
 import json
+import logging
 from typing import Dict, Any, List, Optional, Union
 
 from openai import OpenAI
@@ -16,15 +17,21 @@ from app.models.style_profile import StyleProfile
 from app.schemas.style_profile import StyleProfileCreate, StyleProfileUpdate
 from app.services.vision_service import vision_service
 
+# Configure logging
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 class StyleProfileService:
     """Service for managing style profiles and generating style embeddings"""
     
     def __init__(self):
         """Initialize the Style Profile Service with OpenAI client"""
+        logger.info("Initializing StyleProfileService")
         self.client = OpenAI(api_key=settings.OPENAI_API_KEY)
         self.embedding_model = settings.OPENAI_EMBEDDING_MODEL
         self.text_model = settings.OPENAI_TEXT_MODEL
+        logger.debug(f"Using embedding model: {self.embedding_model}")
+        logger.debug(f"Using text model: {self.text_model}")
     
     async def create_profile_from_analysis(
         self,
@@ -33,59 +40,48 @@ class StyleProfileService:
         analysis_results: Dict[str, Any],
         profile_name: str = "Default Profile"
     ) -> StyleProfile:
-        """
-        Create a new style profile from image analysis results
-
-        Args:
-            db (Session): Database session
-            user_id (int): User ID
-            analysis_results (Dict[str, Any]): Results from image analysis
-            profile_name (str): Name for the profile
-
-        Returns:
-            StyleProfile: Created style profile
-        """
-        # Extract relevant information from analysis results
-        person_attributes = analysis_results.get("person_attributes", {})
-        style_assessment = analysis_results.get("style_assessment", {})
-        size_estimation = analysis_results.get("size_estimation", {})
+        """Create a new style profile from analysis results"""
+        logger.info(f"Creating new style profile for user {user_id}")
+        logger.debug(f"Analysis results: {json.dumps(analysis_results, indent=2)}")
         
-        # Create style profile data
-        profile_data = StyleProfileCreate(
-            name=profile_name,
-            body_shape=person_attributes.get("body_shape"),
-            skin_tone=person_attributes.get("skin_tone"),
-            height=None,  # Height would need conversion from estimation to cm
-            sizes=size_estimation,
-            style_preferences=style_assessment.get("style_descriptors", []),
-            favorite_colors=style_assessment.get("color_palette", []),
-            disliked_items=[]  # No info on disliked items from analysis
-        )
-        
-        # Create the profile
-        db_profile = StyleProfile(
-            user_id=user_id,
-            name=profile_data.name,
-            description=profile_data.description,
-            body_shape=profile_data.body_shape,
-            skin_tone=profile_data.skin_tone,
-            height=profile_data.height,
-            sizes=profile_data.sizes,
-            style_preferences=profile_data.style_preferences,
-            favorite_colors=profile_data.favorite_colors,
-            disliked_items=profile_data.disliked_items
-        )
-        
-        # Generate style embedding
-        style_embedding = await self.generate_style_embedding(db_profile)
-        db_profile.style_embedding = style_embedding
-        
-        # Save to database
-        db.add(db_profile)
-        db.commit()
-        db.refresh(db_profile)
-        
-        return db_profile
+        try:
+            # Generate style embedding
+            embedding = await self.generate_style_embedding(analysis_results)
+            logger.debug(f"Generated embedding of length: {len(embedding)}")
+            
+            # Extract data from analysis results
+            person_attrs = analysis_results.get("person_attributes", {})
+            style_assess = analysis_results.get("style_assessment", {})
+            size_info = analysis_results.get("size_estimation", {})
+            
+            # Create profile object
+            profile_data = {
+                "user_id": user_id,
+                "name": profile_name,
+                "body_shape": person_attrs.get("body_shape"),
+                "skin_tone": person_attrs.get("skin_tone"),
+                "sizes": size_info,
+                "style_preferences": style_assess.get("style_descriptors", []),
+                "favorite_colors": style_assess.get("color_palette", []),
+                "style_embedding": embedding
+            }
+            logger.debug(f"Creating profile with data: {json.dumps(profile_data, indent=2)}")
+            
+            profile = StyleProfile(**profile_data)
+            db.add(profile)
+            db.commit()
+            db.refresh(profile)
+            
+            logger.info(f"Successfully created profile {profile.id} for user {user_id}")
+            return profile
+            
+        except Exception as e:
+            logger.error(f"Error creating profile: {str(e)}")
+            db.rollback()
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to create style profile: {str(e)}"
+            )
     
     async def update_profile_from_analysis(
         self,
@@ -247,34 +243,37 @@ class StyleProfileService:
         self,
         profile: Union[StyleProfile, Dict[str, Any]]
     ) -> List[float]:
-        """
-        Generate a vector embedding for a style profile
-
-        Args:
-            profile (Union[StyleProfile, Dict[str, Any]]): Style profile to embed
-
-        Returns:
-            List[float]: Embedding vector
-        """
-        # Convert profile to a text description for embedding
-        if isinstance(profile, StyleProfile):
-            profile_text = self._profile_to_text(profile)
-        else:
-            profile_text = self._profile_dict_to_text(profile)
+        """Generate style embedding for a profile"""
+        logger.info("Generating style embedding")
         
         try:
-            # Generate embedding
+            # Convert profile to text representation
+            if isinstance(profile, StyleProfile):
+                logger.debug("Converting StyleProfile object to text")
+                text = self._profile_to_text(profile)
+            else:
+                logger.debug("Converting dictionary to text")
+                text = self._profile_dict_to_text(profile)
+            
+            logger.debug(f"Generated text representation: {text}")
+            
+            # Generate embedding using OpenAI
             response = self.client.embeddings.create(
                 model=self.embedding_model,
-                input=profile_text
+                input=text
             )
             
-            return response.data[0].embedding
-        
+            embedding = response.data[0].embedding
+            logger.info(f"Successfully generated embedding of dimension {len(embedding)}")
+            logger.debug(f"Embedding sample (first 5 values): {embedding[:5]}")
+            
+            return embedding
+            
         except Exception as e:
+            logger.error(f"Error generating style embedding: {str(e)}")
             raise HTTPException(
                 status_code=500,
-                detail=f"Error generating style embedding: {str(e)}"
+                detail=f"Failed to generate style embedding: {str(e)}"
             )
     
     async def find_similar_profiles(

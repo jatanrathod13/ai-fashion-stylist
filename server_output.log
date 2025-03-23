@@ -1,0 +1,69 @@
+INFO:     Will watch for changes in these directories: ['/Users/jatanrathod/AI Fashion Shopper']
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [76332] using WatchFiles
+/Users/jatanrathod/.pyenv/versions/3.9.21/lib/python3.9/site-packages/pydantic/_migration.py:283: UserWarning: `pydantic.generics:GenericModel` has been moved to `pydantic.BaseModel`.
+  warnings.warn(f'`{import_path}` has been moved to `{new_location}`.')
+INFO:     Started server process [76339]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+2025-03-22 06:19:59,950 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2025-03-22 06:19:59,964 INFO sqlalchemy.engine.Engine SELECT users.email, users.username, users.hashed_password, users.is_active, users.is_verified, users.id, users.created_at, users.updated_at 
+FROM users 
+WHERE users.username = ? OR users.email = ?
+2025-03-22 06:19:59,964 INFO sqlalchemy.engine.Engine [generated in 0.00020s] ('test@example.com', 'test@example.com')
+(trapped) error reading bcrypt version
+Traceback (most recent call last):
+  File "/Users/jatanrathod/.pyenv/versions/3.9.21/lib/python3.9/site-packages/passlib/handlers/bcrypt.py", line 620, in _load_backend_mixin
+    version = _bcrypt.__about__.__version__
+AttributeError: module 'bcrypt' has no attribute '__about__'
+2025-03-22 06:20:00,227 INFO sqlalchemy.engine.Engine ROLLBACK
+INFO:     127.0.0.1:53794 - "POST /api/auth/token HTTP/1.1" 200 OK
+2025-03-22 06:20:00,230 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2025-03-22 06:20:00,230 INFO sqlalchemy.engine.Engine SELECT users.email, users.username, users.hashed_password, users.is_active, users.is_verified, users.id, users.created_at, users.updated_at 
+FROM users 
+WHERE users.email = ?
+2025-03-22 06:20:00,230 INFO sqlalchemy.engine.Engine [generated in 0.00012s] ('test@example.com',)
+2025-03-22 06:20:00,235 INFO sqlalchemy.engine.Engine ROLLBACK
+INFO:     127.0.0.1:53794 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53794 - "GET /api/style-profiles HTTP/1.1" 307 Temporary Redirect
+2025-03-22 06:20:00,238 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2025-03-22 06:20:00,239 INFO sqlalchemy.engine.Engine SELECT users.email, users.username, users.hashed_password, users.is_active, users.is_verified, users.id, users.created_at, users.updated_at 
+FROM users 
+WHERE users.email = ?
+2025-03-22 06:20:00,239 INFO sqlalchemy.engine.Engine [cached since 0.008382s ago] ('test@example.com',)
+2025-03-22 06:20:00,240 INFO sqlalchemy.engine.Engine SELECT style_profiles.user_id, style_profiles.name, style_profiles.description, style_profiles.body_shape, style_profiles.skin_tone, style_profiles.height, style_profiles.sizes, style_profiles.style_preferences, style_profiles.favorite_colors, style_profiles.disliked_items, style_profiles.favorite_brands, style_profiles.style_embedding, style_profiles.id, style_profiles.created_at, style_profiles.updated_at 
+FROM style_profiles 
+WHERE style_profiles.user_id = ?
+2025-03-22 06:20:00,240 INFO sqlalchemy.engine.Engine [generated in 0.00008s] (1,)
+2025-03-22 06:20:00,241 INFO sqlalchemy.engine.Engine ROLLBACK
+INFO:     127.0.0.1:53794 - "GET /api/style-profiles/ HTTP/1.1" 200 OK
+2025-03-22 06:20:00,244 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2025-03-22 06:20:00,244 INFO sqlalchemy.engine.Engine SELECT users.email, users.username, users.hashed_password, users.is_active, users.is_verified, users.id, users.created_at, users.updated_at 
+FROM users 
+WHERE users.email = ?
+2025-03-22 06:20:00,244 INFO sqlalchemy.engine.Engine [cached since 0.0138s ago] ('test@example.com',)
+WARNING:  WatchFiles detected changes in 'app/services/recommendation_service.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for background tasks to complete. (CTRL+C to force quit)
+DEBUG: Starting recommendation generation for user 1
+DEBUG: Built prompt for OpenAI API. Length: 1084
+DEBUG: Using OpenAI model: gpt-4-turbo-preview
+DEBUG: Sending request to OpenAI API...
+DEBUG: Received response from OpenAI API
+DEBUG: Response content length: 6065
+DEBUG: Processed response. Number of recommendations: 3
+2025-03-22 06:20:40,562 INFO sqlalchemy.engine.Engine INSERT INTO recommendations (user_id, title, occasion, season, budget_min, budget_max, status, description, styling_tips, fashion_trends, is_favorite, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+2025-03-22 06:20:40,564 INFO sqlalchemy.engine.Engine [generated in 0.00228s] (1, 'Test Recommendation', 'casual weekend', 'summer', 100.0, 400.0, 'completed', 'Light and Airy Sundress Ensemble', '["Pair with a wide-brimmed hat for added sun protection.", "Accessorize with simple gold jewelry for a touch of elegance.", "Consider a light shawl or cardigan for cooler evenings."]', '[]', 0, '2025-03-22 11:20:40.562013', '2025-03-22 11:20:40.562022')
+2025-03-22 06:20:40,565 INFO sqlalchemy.engine.Engine ROLLBACK
+ERROR:root:Recommendation generation error: (sqlite3.OperationalError) table recommendations has no column named styling_tips
+[SQL: INSERT INTO recommendations (user_id, title, occasion, season, budget_min, budget_max, status, description, styling_tips, fashion_trends, is_favorite, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)]
+[parameters: (1, 'Test Recommendation', 'casual weekend', 'summer', 100.0, 400.0, 'completed', 'Light and Airy Sundress Ensemble', '["Pair with a wide-brimmed hat for added sun protection.", "Accessorize with simple gold jewelry for a touch of elegance.", "Consider a light shawl or cardigan for cooler evenings."]', '[]', 0, '2025-03-22 11:20:40.562013', '2025-03-22 11:20:40.562022')]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [76339]
+/Users/jatanrathod/.pyenv/versions/3.9.21/lib/python3.9/site-packages/pydantic/_migration.py:283: UserWarning: `pydantic.generics:GenericModel` has been moved to `pydantic.BaseModel`.
+  warnings.warn(f'`{import_path}` has been moved to `{new_location}`.')
+INFO:     Started server process [77340]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.

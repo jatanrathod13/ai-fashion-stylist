@@ -1,0 +1,40 @@
+INFO:     Will watch for changes in these directories: ['/Users/jatanrathod/AI Fashion Shopper']
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [28091] using StatReload
+/Users/jatanrathod/AI Fashion Shopper/venv/lib/python3.9/site-packages/pydantic/_migration.py:283: UserWarning: `pydantic.generics:GenericModel` has been moved to `pydantic.BaseModel`.
+  warnings.warn(f'`{import_path}` has been moved to `{new_location}`.')
+INFO:     Started server process [28098]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     127.0.0.1:51613 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51615 - "GET /docs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51617 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51619 - "GET /api/users/ HTTP/1.1" 405 Method Not Allowed
+INFO:     127.0.0.1:51621 - "GET /api/auth/token HTTP/1.1" 405 Method Not Allowed
+INFO:     127.0.0.1:51623 - "GET /api/profiles/ HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:51625 - "GET /api/recommendations/ HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:51627 - "GET /openapi.json HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51641 - "GET / HTTP/1.1" 200 OK
+2025-03-22 05:18:20,601 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2025-03-22 05:18:20,614 INFO sqlalchemy.engine.Engine SELECT users.email, users.username, users.hashed_password, users.is_active, users.is_verified, users.id, users.created_at, users.updated_at 
+FROM users 
+WHERE users.username = ?
+2025-03-22 05:18:20,614 INFO sqlalchemy.engine.Engine [generated in 0.00015s] ('testuser123@example.com',)
+2025-03-22 05:18:20,615 INFO sqlalchemy.engine.Engine ROLLBACK
+INFO:     127.0.0.1:51643 - "POST /api/auth/token HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:51664 - "GET / HTTP/1.1" 200 OK
+2025-03-22 05:18:46,667 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2025-03-22 05:18:46,667 INFO sqlalchemy.engine.Engine SELECT users.email, users.username, users.hashed_password, users.is_active, users.is_verified, users.id, users.created_at, users.updated_at 
+FROM users 
+WHERE users.username = ?
+2025-03-22 05:18:46,667 INFO sqlalchemy.engine.Engine [cached since 26.05s ago] ('test@example.com',)
+2025-03-22 05:18:46,668 INFO sqlalchemy.engine.Engine ROLLBACK
+INFO:     127.0.0.1:51666 - "POST /api/auth/token HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:51671 - "GET / HTTP/1.1" 200 OK
+2025-03-22 05:19:03,673 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2025-03-22 05:19:03,673 INFO sqlalchemy.engine.Engine SELECT users.email, users.username, users.hashed_password, users.is_active, users.is_verified, users.id, users.created_at, users.updated_at 
+FROM users 
+WHERE users.username = ?
+2025-03-22 05:19:03,673 INFO sqlalchemy.engine.Engine [cached since 43.06s ago] ('test@example.com',)
+2025-03-22 05:19:03,673 INFO sqlalchemy.engine.Engine ROLLBACK
+INFO:     127.0.0.1:51673 - "POST /api/auth/token HTTP/1.1" 401 Unauthorized

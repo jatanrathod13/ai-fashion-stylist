@@ -9,14 +9,13 @@ import os
 import json
 import logging
 import re
-import time
 from typing import Dict, List, Optional, Any
 import openai
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.style_profile import StyleProfile
-from app.schemas.recommendation import BudgetRange, StylePreferences, OutfitCreate, OutfitComponentCreate, ProductCreate
+from app.schemas.recommendation import BudgetRange, StylePreferences
 from app.config import settings
 
 # Initialize OpenAI client
@@ -53,13 +52,9 @@ async def generate_recommendations(
         List of recommendation dictionaries
     """
     try:
-        # Verbose logging for debugging
-        print(f"DEBUG: Starting recommendation generation for user {user_id}")
-        
         # Get style profile if provided
         profile = None
         if profile_id:
-            print(f"DEBUG: Looking up style profile {profile_id}")
             result = await db.execute(
                 select(StyleProfile).where(
                     StyleProfile.id == profile_id,
@@ -67,7 +62,6 @@ async def generate_recommendations(
                 )
             )
             profile = result.scalar_one_or_none()
-            print(f"DEBUG: Profile found: {profile is not None}")
         
         # Build prompt with improved method
         prompt = _build_recommendation_prompt(
@@ -78,44 +72,28 @@ async def generate_recommendations(
             preferences=preferences
         )
         
-        print(f"DEBUG: Built prompt for OpenAI API. Length: {len(prompt)}")
         logger.info("Sending request to OpenAI API for user %d", user_id)
-        
-        # Check OpenAI API key
-        if not settings.OPENAI_API_KEY:
-            print("DEBUG: OPENAI_API_KEY is not set!")
-            raise ValueError("OpenAI API key is not configured")
-        
-        print(f"DEBUG: Using OpenAI model: {MODEL}")
+        logger.debug("Prompt: %s", prompt)
         
         # Call OpenAI API with improved response format handling
-        print("DEBUG: Sending request to OpenAI API...")
-        try:
-            response = await client.chat.completions.create(
-                model=MODEL,
-                messages=[
-                    {"role": "system", "content": "You are a fashion stylist AI assistant that provides detailed, personalized outfit recommendations. Always respond with valid JSON only."},
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=0.7,
-                response_format={"type": "json_object"}
-            )
-            print("DEBUG: Received response from OpenAI API")
-        except Exception as openai_error:
-            print(f"DEBUG: OpenAI API error: {str(openai_error)}")
-            raise
+        response = await client.chat.completions.create(
+            model=MODEL,
+            messages=[
+                {"role": "system", "content": "You are a fashion stylist AI assistant that provides detailed, personalized outfit recommendations. Always respond with valid JSON only."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.7,
+            response_format={"type": "json_object"}
+        )
         
         # Get response content
         content = response.choices[0].message.content
-        print(f"DEBUG: Response content length: {len(content)}")
+        logger.info("Received response from OpenAI API")
         
         # Process the response using enhanced method
-        result = process_openai_response(content, user_id, profile_id)
-        print(f"DEBUG: Processed response. Number of recommendations: {len(result)}")
-        return result
+        return process_openai_response(content, user_id, profile_id)
         
     except Exception as e:
-        print(f"DEBUG: Error in generate_recommendations: {str(e)}")
         logger.error("Error generating recommendations: %s", str(e))
         # Save more detailed error information for debugging
         error_file = f"openai_error_{user_id}_{profile_id or 'none'}_{int(time.time())}.log"
@@ -138,64 +116,6 @@ async def generate_recommendations(
         # Re-raise the exception to be handled by the API layer
         raise
 
-
-def transform_openai_recommendation(rec: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Transform an OpenAI recommendation into our database schema format.
-    
-    Args:
-        rec: Raw recommendation from OpenAI
-        
-    Returns:
-        Transformed recommendation matching our schema
-    """
-    # Create outfits from items
-    outfits = []
-    if "items" in rec and isinstance(rec["items"], list):
-        # Group items by category into a single outfit
-        outfit_components = []
-        for item in rec["items"]:
-            if not isinstance(item, dict):
-                continue
-                
-            # Create product
-            product_data = {
-                "title": item.get("name", ""),
-                "brand": item.get("brand"),
-                "price": None,  # We'll need to parse price_range to get an actual value
-                "currency": "USD",
-                "metadata": {
-                    "color": item.get("color"),
-                    "alternatives": item.get("alternatives", [])
-                }
-            }
-            
-            # Create outfit component data as a dictionary
-            component_data = {
-                "type": item.get("category", "unknown"),
-                "description": item.get("description", ""),
-                "products": [product_data]
-            }
-            
-            outfit_components.append(component_data)
-        
-        # Create outfit data as a dictionary
-        if outfit_components:
-            outfit_data = {
-                "name": rec.get("description", "Recommended Outfit"),
-                "description": rec.get("description"),
-                "styling_tips": rec.get("styling_tips", []),
-                "components": outfit_components
-            }
-            outfits.append(outfit_data)
-    
-    # Return transformed recommendation
-    return {
-        "description": rec.get("description", ""),
-        "outfits": outfits,
-        "styling_tips": rec.get("styling_tips", []),
-        "reasoning": rec.get("reasoning", "")
-    }
 
 def process_openai_response(content: str, user_id: int, profile_id: Optional[int] = None) -> List[Dict]:
     """
@@ -238,14 +158,8 @@ def process_openai_response(content: str, user_id: int, profile_id: Optional[int
                 logger.warning("Recommendation %d missing valid 'items' for user %d", i, user_id)
                 continue
                 
-            # Transform recommendation to match our schema
-            try:
-                transformed_rec = transform_openai_recommendation(rec)
-                valid_recommendations.append(transformed_rec)
-            except Exception as e:
-                logger.error("Error transforming recommendation %d for user %d: %s", 
-                           i, user_id, str(e))
-                continue
+            # Add to valid recommendations
+            valid_recommendations.append(rec)
         
         logger.info("Successfully processed %d recommendations for user %d", 
                     len(valid_recommendations), user_id)

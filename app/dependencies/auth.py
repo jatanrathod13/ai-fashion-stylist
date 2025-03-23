@@ -44,7 +44,8 @@ def get_password_hash(password: str) -> str:
 
 async def authenticate_user(db: AsyncSession, username: str, password: str) -> Optional[User]:
     """Authenticate a user with username and password"""
-    query = select(User).where(User.username == username)
+    # Check both username and email
+    query = select(User).where((User.username == username) | (User.email == username))
     result = await db.execute(query)
     user = result.scalar_one_or_none()
     
@@ -89,16 +90,16 @@ async def get_current_user(
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         
         # Extract user information from token
-        username = payload.get("sub")
-        if username is None:
+        email = payload.get("sub")
+        if email is None:
             raise credentials_exception
         
-        token_data = TokenData(username=username)
+        token_data = TokenData(username=email)
     except JWTError:
         raise credentials_exception
     
-    # Get user from database
-    query = select(User).where(User.username == token_data.username)
+    # Get user from database using email
+    query = select(User).where(User.email == token_data.username)
     result = await db.execute(query)
     user = result.scalar_one_or_none()
     

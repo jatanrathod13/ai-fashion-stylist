@@ -28,21 +28,24 @@ async def create_user(user_data: UserCreate, db: AsyncSession = Depends(get_db))
     Create a new user account.
     """
     # Check if user already exists
-    result = await db.execute(select(User).where(User.email == user_data.email))
+    result = await db.execute(select(User).where(
+        (User.email == user_data.email) | (User.username == user_data.username)
+    ))
     existing_user = result.scalar_one_or_none()
     if existing_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="User with this email already exists",
+            detail="User with this email or username already exists",
         )
     
     # Create new user
     hashed_password = get_password_hash(user_data.password)
     db_user = User(
         email=user_data.email,
-        full_name=user_data.full_name,
+        username=user_data.username,
         hashed_password=hashed_password,
         is_active=True,
+        is_verified=False
     )
     
     try:

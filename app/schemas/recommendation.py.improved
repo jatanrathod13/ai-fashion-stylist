@@ -1,0 +1,113 @@
+"""
+Recommendation schemas.
+
+This module defines Pydantic models for recommendation-related data.
+"""
+from typing import List, Optional, Dict, Any
+from pydantic import BaseModel, Field, validator
+
+class BudgetRange(BaseModel):
+    """Budget range for outfit recommendations."""
+    min: float = Field(0.0, ge=0, description="Minimum budget in USD")
+    max: float = Field(1000.0, ge=0, description="Maximum budget in USD")
+    
+    @validator("max")
+    def max_greater_than_min(cls, v, values):
+        """Validate that max is greater than min."""
+        if "min" in values and v < values["min"]:
+            raise ValueError("Maximum budget must be greater than minimum budget")
+        return v
+    
+    @classmethod
+    def from_string(cls, budget_string: str) -> "BudgetRange":
+        """Create a BudgetRange from a string like '100-400'."""
+        try:
+            parts = budget_string.split("-")
+            if len(parts) == 2:
+                return cls(min=float(parts[0]), max=float(parts[1]))
+        except (ValueError, IndexError):
+            pass
+        
+        # Default range if parsing fails
+        return cls()
+
+
+class StylePreferences(BaseModel):
+    """User style preferences for recommendations."""
+    favorite_colors: Optional[List[str]] = None
+    preferred_styles: Optional[List[str]] = None
+    favorite_brands: Optional[List[str]] = None
+    disliked_items: Optional[List[str]] = None
+    special_requirements: Optional[str] = None
+
+
+class RecommendationItem(BaseModel):
+    """An individual item in a recommendation outfit."""
+    name: str
+    category: str
+    description: Optional[str] = None
+    color: Optional[str] = None
+    brand: Optional[str] = None
+    price_range: Optional[str] = None
+    alternatives: Optional[List[str]] = None
+
+
+class RecommendationCreate(BaseModel):
+    """Model for creating a new recommendation."""
+    user_id: int
+    profile_id: Optional[int] = None
+    title: str
+    occasion: Optional[str] = None
+    season: Optional[str] = None
+    budget_min: Optional[float] = None
+    budget_max: Optional[float] = None
+    items: List[Dict[str, Any]]
+    description: Optional[str] = None
+    styling_tips: Optional[List[str]] = None
+    reasoning: Optional[str] = None
+    is_favorite: bool = False
+
+
+class RecommendationResponse(RecommendationCreate):
+    """Model for recommendation responses."""
+    id: int
+    created_at: str
+    updated_at: Optional[str] = None
+    
+    class Config:
+        orm_mode = True
+
+
+class RecommendationRequest(BaseModel):
+    """Request model for generating recommendations."""
+    style_profile_id: Optional[int] = None
+    title: str = "My Outfit Recommendation"
+    occasion: Optional[str] = None
+    season: Optional[str] = None
+    budget_min: float = Field(0.0, ge=0, description="Minimum budget in USD")
+    budget_max: float = Field(1000.0, ge=0, description="Maximum budget in USD")
+    specific_requests: Optional[str] = None
+    
+    @validator("budget_max")
+    def budget_max_greater_than_min(cls, v, values):
+        """Validate that budget_max is greater than budget_min."""
+        if "budget_min" in values and v < values["budget_min"]:
+            raise ValueError("Maximum budget must be greater than minimum budget")
+        return v
+    
+    @classmethod
+    def from_form_data(cls, form_data: Dict[str, Any]) -> "RecommendationRequest":
+        """Create a RecommendationRequest from form data with budget range handling."""
+        # Handle budget range if provided as a single string
+        if "budget" in form_data and isinstance(form_data["budget"], str):
+            try:
+                parts = form_data["budget"].split("-")
+                if len(parts) == 2:
+                    form_data["budget_min"] = float(parts[0])
+                    form_data["budget_max"] = float(parts[1])
+                    form_data.pop("budget")
+            except (ValueError, IndexError):
+                pass
+        
+        # Create the request object
+        return cls(**form_data) 

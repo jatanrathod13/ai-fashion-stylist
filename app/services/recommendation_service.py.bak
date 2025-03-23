@@ -1,0 +1,229 @@
+"""
+Recommendation Service.
+
+This module provides functionality for generating personalized fashion recommendations
+based on user style profiles, preferences, and specific requirements.
+"""
+
+import os
+import json
+import logging
+import re
+from typing import Dict, List, Optional, Any
+import openai
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models.style_profile import StyleProfile
+from app.schemas.recommendation import BudgetRange, StylePreferences
+from app.config import settings
+
+# Initialize OpenAI client
+client = openai.AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+
+# Model to use for recommendations
+MODEL = settings.OPENAI_TEXT_MODEL
+
+# Set up logging
+logger = logging.getLogger(__name__)
+
+async def generate_recommendations(
+    db: AsyncSession,
+    user_id: int,
+    profile_id: Optional[int] = None,
+    occasion: Optional[str] = None,
+    season: Optional[str] = None,
+    budget: Optional[BudgetRange] = None,
+    preferences: Optional[StylePreferences] = None,
+) -> List[Dict]:
+    """
+    Generate personalized fashion recommendations.
+    
+    Args:
+        db: Database session
+        user_id: ID of the user
+        profile_id: Optional ID of the style profile to use
+        occasion: Optional occasion for the outfit
+        season: Optional season for the outfit
+        budget: Optional budget range
+        preferences: Optional additional style preferences
+        
+    Returns:
+        List of recommendation dictionaries
+    """
+    # Get style profile if provided
+    profile = None
+    if profile_id:
+        result = await db.execute(
+            select(StyleProfile).where(
+                StyleProfile.id == profile_id,
+                StyleProfile.user_id == user_id
+            )
+        )
+        profile = result.scalar_one_or_none()
+    
+    # Build prompt
+    prompt = _build_recommendation_prompt(
+        profile=profile,
+        occasion=occasion,
+        season=season,
+        budget=budget,
+        preferences=preferences
+    )
+    
+    logger.info("Sending request to OpenAI API with prompt: %s", prompt)
+    
+    try:
+        # Call OpenAI API with JSON response format
+        response = await client.chat.completions.create(
+            model=MODEL,
+            messages=[
+                {"role": "system", "content": "You are a fashion stylist AI assistant that provides detailed, personalized outfit recommendations. Always respond with valid JSON only."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.7,
+            response_format={"type": "json_object"}
+        )
+        
+        # Get response content
+        content = response.choices[0].message.content
+        logger.info("Received response from OpenAI API")
+        logger.debug("Response content: %s", content)
+        
+        try:
+            # Extract JSON if it's wrapped in code blocks or has other text
+            json_match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', content, re.DOTALL)
+            if json_match:
+                content = json_match.group(1)
+                logger.info("Extracted JSON from code block")
+            
+            # Parse response
+            result = json.loads(content)
+            
+            # Validate the response structure
+            if "recommendations" not in result:
+                logger.warning("OpenAI response missing 'recommendations' key: %s", content)
+                result = {"recommendations": []}
+            
+            # Return recommendations
+            recommendations = result.get("recommendations", [])
+            logger.info("Successfully processed %d recommendations", len(recommendations))
+            return recommendations
+            
+        except json.JSONDecodeError as e:
+            logger.error("Error parsing JSON from OpenAI response: %s", str(e))
+            logger.error("Raw response content: %s", content)
+            
+            # Save the problematic response for debugging
+            error_file = f"openai_error_{user_id}_{profile_id or 'none'}.txt"
+            with open(error_file, "w") as f:
+                f.write(content)
+            logger.info("Saved problematic response to %s", error_file)
+            
+            # Return empty list as fallback
+            return []
+    except Exception as e:
+        logger.error("Error calling OpenAI API: %s", str(e))
+        raise
+
+
+def _build_recommendation_prompt(
+    profile: Optional[StyleProfile] = None,
+    occasion: Optional[str] = None,
+    season: Optional[str] = None,
+    budget: Optional[BudgetRange] = None,
+    preferences: Optional[StylePreferences] = None,
+) -> str:
+    """
+    Build a detailed prompt for the recommendation engine.
+    """
+    prompt_parts = [
+        "Generate 3 detailed outfit recommendations that match the following criteria:"
+    ]
+    
+    # Add style profile information if available
+    if profile:
+        profile_details = []
+        
+        if profile.body_shape:
+            profile_details.append(f"Body shape: {profile.body_shape}")
+        if profile.skin_tone:
+            profile_details.append(f"Skin tone: {profile.skin_tone}")
+        if profile.height:
+            profile_details.append(f"Height: {profile.height} cm")
+        if profile.style_preferences:
+            profile_details.append(f"Style preferences: {', '.join(profile.style_preferences)}")
+        if profile.favorite_colors:
+            profile_details.append(f"Favorite colors: {', '.join(profile.favorite_colors)}")
+        if profile.disliked_items:
+            profile_details.append(f"Dislikes: {', '.join(profile.disliked_items)}")
+        if profile.sizes:
+            size_details = [f"{k}: {v}" for k, v in profile.sizes.items()]
+            profile_details.append(f"Sizes: {', '.join(size_details)}")
+        
+        if profile_details:
+            prompt_parts.append("Style Profile Details:")
+            prompt_parts.extend([f"- {detail}" for detail in profile_details])
+    
+    # Add occasion if provided
+    if occasion:
+        prompt_parts.append(f"Occasion: {occasion}")
+    
+    # Add season if provided
+    if season:
+        prompt_parts.append(f"Season: {season}")
+    
+    # Add budget if provided
+    if budget:
+        budget_text = f"Budget: {budget.min} to {budget.max} USD"
+        prompt_parts.append(budget_text)
+    
+    # Add additional preferences if provided
+    if preferences:
+        pref_details = []
+        
+        if preferences.favorite_colors:
+            pref_details.append(f"Color palette: {', '.join(preferences.favorite_colors)}")
+        if preferences.preferred_styles:
+            pref_details.append(f"Styles: {', '.join(preferences.preferred_styles)}")
+        if preferences.favorite_brands:
+            pref_details.append(f"Preferred brands: {', '.join(preferences.favorite_brands)}")
+        if preferences.special_requirements:
+            pref_details.append(f"Special requirements: {preferences.special_requirements}")
+        if preferences.disliked_items:
+            pref_details.append(f"Disliked items: {', '.join(preferences.disliked_items)}")
+        
+        if pref_details:
+            prompt_parts.append("Additional Preferences:")
+            prompt_parts.extend([f"- {detail}" for detail in pref_details])
+    
+    # Add output format instructions
+    prompt_parts.append("""
+Return your response as valid JSON following this exact structure:
+{
+  "recommendations": [
+    {
+      "description": "Brief overall description of the outfit",
+      "items": [
+        {
+          "name": "Item name",
+          "category": "Category (e.g., top, bottom, shoes, accessory)",
+          "description": "Detailed description",
+          "color": "Color",
+          "brand": "Suggested brand (optional)",
+          "price_range": "Estimated price range",
+          "alternatives": ["Alternative 1", "Alternative 2"]
+        }
+        // More items...
+      ],
+      "styling_tips": ["Tip 1", "Tip 2", "Tip 3"],
+      "reasoning": "Explanation of why this outfit works for the given profile and occasion"
+    }
+    // More recommendations...
+  ]
+}
+
+Your response must be valid JSON. Do not include any text before or after the JSON object.
+""")
+    
+    return "\n\n".join(prompt_parts) 

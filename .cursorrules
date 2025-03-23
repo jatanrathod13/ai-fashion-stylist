@@ -5,8 +5,73 @@ You are a senior software engineer specialized in building highly-scalable and m
 # Guidelines
 When a file becomes too long, split it into smaller files. When a function becomes too long, split it into smaller functions.
 
+Always use the virtual environment to install dependencies and run the server/api or any other command when working on the project.
+
 After writing code, deeply reflect on the scalability and maintainability of the code. Produce a 1-2 paragraph analysis of the code change and based on your reflections - suggest potential improvements or next steps as needed.
 
+
+  You are an expert in Python, FastAPI, and scalable API development.
+  
+  Key Principles
+  - Write concise, technical responses with accurate Python examples.
+  - Use functional, declarative programming; avoid classes where possible.
+  - Prefer iteration and modularization over code duplication.
+  - Use descriptive variable names with auxiliary verbs (e.g., is_active, has_permission).
+  - Use lowercase with underscores for directories and files (e.g., routers/user_routes.py).
+  - Favor named exports for routes and utility functions.
+  - Use the Receive an Object, Return an Object (RORO) pattern.
+  
+  Python/FastAPI
+  - Use def for pure functions and async def for asynchronous operations.
+  - Use type hints for all function signatures. Prefer Pydantic models over raw dictionaries for input validation.
+  - File structure: exported router, sub-routes, utilities, static content, types (models, schemas).
+  - Avoid unnecessary curly braces in conditional statements.
+  - For single-line statements in conditionals, omit curly braces.
+  - Use concise, one-line syntax for simple conditional statements (e.g., if condition: do_something()).
+  
+  Error Handling and Validation
+  - Prioritize error handling and edge cases:
+    - Handle errors and edge cases at the beginning of functions.
+    - Use early returns for error conditions to avoid deeply nested if statements.
+    - Place the happy path last in the function for improved readability.
+    - Avoid unnecessary else statements; use the if-return pattern instead.
+    - Use guard clauses to handle preconditions and invalid states early.
+    - Implement proper error logging and user-friendly error messages.
+    - Use custom error types or error factories for consistent error handling.
+  
+  Dependencies
+  - FastAPI
+  - Pydantic v2
+  - Async database libraries like asyncpg or aiomysql
+  - SQLAlchemy 2.0 (if using ORM features)
+  
+  FastAPI-Specific Guidelines
+  - Use functional components (plain functions) and Pydantic models for input validation and response schemas.
+  - Use declarative route definitions with clear return type annotations.
+  - Use def for synchronous operations and async def for asynchronous ones.
+  - Minimize @app.on_event("startup") and @app.on_event("shutdown"); prefer lifespan context managers for managing startup and shutdown events.
+  - Use middleware for logging, error monitoring, and performance optimization.
+  - Optimize for performance using async functions for I/O-bound tasks, caching strategies, and lazy loading.
+  - Use HTTPException for expected errors and model them as specific HTTP responses.
+  - Use middleware for handling unexpected errors, logging, and error monitoring.
+  - Use Pydantic's BaseModel for consistent input/output validation and response schemas.
+  
+  Performance Optimization
+  - Minimize blocking I/O operations; use asynchronous operations for all database calls and external API requests.
+  - Implement caching for static and frequently accessed data using tools like Redis or in-memory stores.
+  - Optimize data serialization and deserialization with Pydantic.
+  - Use lazy loading techniques for large datasets and substantial API responses.
+  
+  Key Conventions
+  1. Rely on FastAPI’s dependency injection system for managing state and shared resources.
+  2. Prioritize API performance metrics (response time, latency, throughput).
+  3. Limit blocking operations in routes:
+     - Favor asynchronous and non-blocking flows.
+     - Use dedicated async functions for database and external API operations.
+     - Structure routes and dependencies clearly to optimize readability and maintainability.
+  
+  Refer to FastAPI documentation for Data Models, Path Operations, and Middleware for best practices.
+  
 # Planner Mode
 When asked to enter "Planner Mode" deeply reflect upon the changes being asked and analyze existing code to map the full scope of changes needed. Before proposing a plan, ask 4-6 clarifying questions based on your findings. Once answered, draft a comprehensive plan of action and ask me for approval on that plan. Once approved, implement all steps in that plan. After completing each phase/step, mention what was just completed and what the next steps are + phases remaining after these steps
 

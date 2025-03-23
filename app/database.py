@@ -5,9 +5,19 @@ This module manages the SQLAlchemy database engine and session.
 """
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.ext.declarative import declarative_base
+
+# Import the shared Base from models
+from app.models.base import Base
 
 from app.config import settings
+
+# Import all models to register them with SQLAlchemy's metadata
+from app.models.user import User
+from app.models.style_profile import StyleProfile, FeedbackHistory
+from app.models.recommendation import Recommendation
+from app.models.outfit import Outfit
+from app.models.outfit_component import OutfitComponent
+from app.models.product import Product
 
 # Create async database engine
 engine = create_async_engine(
@@ -23,9 +33,6 @@ AsyncSessionLocal = sessionmaker(
     bind=engine,
     class_=AsyncSession
 )
-
-# Create a base class for declarative models
-Base = declarative_base()
 
 # Dependency for getting a database session
 async def get_db():
